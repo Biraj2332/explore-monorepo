@@ -1,0 +1,15 @@
+{
+  "name": "@app/api-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "echo 'Building api-gateway'",
+    "start:dev": "echo 'Starting dev server'",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@domain/core": "workspace:*",
+    "@libs/shared": "workspace:*"
+  }
+}

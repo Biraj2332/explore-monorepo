@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # Database Services
+  db:
+    image: mysql:8.4.6
+    container_name: insurance-db-sample
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-pass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-insurance_db_sample}
+      MYSQL_USER: ${MYSQL_USER:-admin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-adminpass}
+    ports:
+      - "${DB_PORT:-13307}:3306"  
+    volumes:
+      - ./infra/db_data:/var/lib/mysql
+      
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-pass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - insurance-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: insurance-redis
+    ports:
+      - "${REDIS_PORT:-16379}:6379" 
+    volumes:
+      - ./infra/redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - insurance-network
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: insurance-clickhouse-demo
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-18123}:8123"  
+      - "${CLICKHOUSE_TCP_PORT:-19000}:9000"   
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-insurance_logs}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-demo_user}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-passd}
+    volumes:
+      - ./infra/clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - insurance-network
+
+  # Backend Services
+  api-gateway:
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+      target: development
+    container_name: insurance-api-gateway
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:-pass}@db:3306/${MYSQL_DATABASE:-insurance_db_sample}
+      REDIS_URL: redis://redis:6379
+      CLICKHOUSE_URL: http://clickhouse:8123
+      PORT: 3000
+    ports:
+      - "${API_GATEWAY_PORT:-3000}:3000"
+    volumes:
+      - ./apps/api-gateway:/app/apps/api-gateway
+      - ./packages:/app/packages
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "sleep 3 && pnpm --filter @app/api-gateway run start:dev"
+    networks:
+      - insurance-network
+
+  # Frontend Service 
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: development
+    container_name: insurance-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:3000}
+      NODE_ENV: development
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - ./packages:/app/packages
+      - /app/node_modules
+    depends_on:
+      - api-gateway
+    command: sh -c "sleep 3 && pnpm --filter @app/frontend run dev"
+    networks:
+      - insurance-network
+
+networks:
+  insurance-network:
+    driver: bridge

@@ -1,0 +1,69 @@
+# Node modules and build artifacts
+**/node_modules
+**/build
+**/coverage
+**/.turbo
+
+# Local and IDE configurations
+.env
+.env.*
+.vscode
+.idea
+*.log
+
+# Lock files (we copy specific ones)
+yarn.lock
+package-lock.json
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# CI/CD and development files
+.github
+.gitlab-ci.yml
+*.md
+!README.md
+
+# Testing files
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+**/test
+**/tests
+jest.config.*
+**/__tests__
+
+# Development tools
+.eslintrc.*
+.prettierrc.*
+tsconfig.*.json
+!tsconfig.json
+biome.jsonc
+lefthook.yaml
+commitlint.config.ts
+
+# Docker files
+Dockerfile*
+docker-compose*
+!prod.Dockerfile
+
+# Database and external data
+db_data/
+clickhouse_data/
+mysql_migrations/
+*.sql
+*.sql.backup
+
+# Temporary and cache files
+**/tmp
+**/.cache
+**/.next/cache
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+react.Dockerfile
